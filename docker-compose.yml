@@ -1,0 +1,13 @@
+services:
+  sonosync:
+    build: .
+    container_name: sonosync
+    network_mode: "host"
+    volumes:
+      - .:/app
+      - /app/node_modules # Anonymous volume for node_modules
+    environment:
+      - NODE_ENV=development
+      - DEBUG=sonos:*
+      - CI=true # Suppress TTY prompts
+    restart: unless-stopped

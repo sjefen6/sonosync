@@ -1,0 +1,17 @@
+# Dependency directories
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+
+# Environment variables
+.env
+.env.local
+
+# Docker
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
