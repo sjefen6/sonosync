@@ -3,11 +3,8 @@ services:
     build: .
     container_name: sonosync
     network_mode: "host"
-    volumes:
-      - .:/app
-      - /app/node_modules
+    # No more volume mounts needed for runtime - the image is self-contained!
     environment:
-      - NODE_ENV=development
-      - LOG_LEVEL=INFO # Our app logs (INFO, DEBUG, ERROR)
-      - DEBUG= # Disable library logs by default for cleaner output
+      - LOG_LEVEL=INFO
+      - DEBUG=
     restart: unless-stopped
