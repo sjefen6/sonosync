@@ -12,9 +12,9 @@ jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
-      id-token: write # Required for some attestation features
+      contents: write # Required for creating/editing releases
+      packages: write # Required for GHCR
+      id-token: write # Required for attestations
 
     steps:
       - name: Checkout repository
