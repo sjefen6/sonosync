@@ -15,17 +15,42 @@ A Node.js/TypeScript service designed to keep the volume levels of grouped Sonos
 - **Docker & Docker Compose:** For running the application without local Node.js installation.
 - **Linux Host:** Recommended for deployment due to Docker networking limitations on Windows/macOS (host networking is required for SSDP discovery).
 
-## Getting Started
+## Deployment
 
-1. **Clone the repository.**
-2. **Build and start the container:**
-   ```bash
-   docker-compose up -d --build
-   ```
-3. **Monitor logs:**
-   ```bash
-   docker logs sonosync -f
-   ```
+The application is automatically published as a Docker image to the GitHub Container Registry (GHCR).
+
+### **Using the Published Image**
+
+You can run the pre-built image directly without cloning the source code:
+
+```bash
+docker run -d \
+  --name sonosync \
+  --network host \
+  -e LOG_LEVEL=INFO \
+  --restart unless-stopped \
+  ghcr.io/sjefen6/sonosync:latest
+```
+
+### **Using Docker Compose**
+
+Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  sonosync:
+    image: ghcr.io/sjefen6/sonosync:latest
+    container_name: sonosync
+    network_mode: "host"
+    environment:
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+```
+
+Then run:
+```bash
+docker-compose up -d
+```
 
 ## Development
 
