@@ -85,15 +85,20 @@ jobs:
           sbom: true
           provenance: true
 
-      - name: Update Release with Pull Commands
+      - name: Create or Update Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG=${{ github.ref_name }}
-          # The image tag (removes 'v' prefix)
           IMG_TAG=${TAG#v}
           
+          # Create release if it doesn't exist (using auto-generated notes as base)
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Creating new release for $TAG"
+            gh release create "$TAG" --generate-notes
+          fi
+
           PULL_NOTES="
 
           ### 📥 Docker Pull Commands
@@ -105,12 +110,12 @@ jobs:
           docker pull ghcr.io/${{ github.repository }}:${IMG_TAG}
           \`\`\`"
           
-          # Fetch existing body
-          EXISTING_BODY=$(gh release view $TAG --json body --template '{{.body}}' || echo "")
+          # Fetch current body (which now definitely exists)
+          EXISTING_BODY=$(gh release view "$TAG" --json body --template '{{.body}}')
           
-          # Only append if not already present
+          # Append pull commands if not present
           if [[ "$EXISTING_BODY" != *"Docker Pull Commands"* ]]; then
-            gh release edit $TAG --notes "$EXISTING_BODY$PULL_NOTES"
+            gh release edit "$TAG" --notes "$EXISTING_BODY$PULL_NOTES"
           fi
 
       - name: Update Docker Hub description
