@@ -34,9 +34,11 @@ RUN chown node:node /app
 COPY --from=builder /app/package.json /app/pnpm-lock.yaml ./
 COPY --from=builder /app/dist ./dist
 
+# Enable pnpm as root before switching users
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Final production install as the 'node' user
 USER node
-RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN pnpm install --prod --frozen-lockfile
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
