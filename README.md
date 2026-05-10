@@ -15,41 +15,46 @@ A Node.js/TypeScript service designed to keep the volume levels of grouped Sonos
 - **Docker & Docker Compose:** For running the application without local Node.js installation.
 - **Linux Host:** Recommended for deployment due to Docker networking limitations on Windows/macOS (host networking is required for SSDP discovery).
 
+## Configuration
+
+The service works out-of-the-box with sensible defaults, but can be customized via environment variables:
+
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `ERROR`) | `INFO` |
+| `CACHE_TTL_MS` | Cooldown period for ignoring volume echos (ms) | `10000` |
+
 ## Deployment
 
-The application is automatically published as a Docker image to the GitHub Container Registry (GHCR).
+### **Synology (Container Manager)**
 
-### **Using the Published Image**
+1. Open **Container Manager** and go to **Registry**.
+2. Search for `sonosync` and download the image (`sjefen6/sonosync`).
+3. Go to the **Container** tab and click **Create**.
+4. Select the `sonosync:latest` image.
+5. Enter a name and enable **"Enable auto-restart"**.
+6. **Crucial:** Under **Network**, select **"host"**.
+7. Click **Done**.
 
-You can run the pre-built image directly without cloning the source code:
+### **Docker CLI**
 
 ```bash
 docker run -d \
   --name sonosync \
   --network host \
-  -e LOG_LEVEL=INFO \
   --restart unless-stopped \
-  ghcr.io/sjefen6/sonosync:latest
+  sjefen6/sonosync:latest
 ```
 
-### **Using Docker Compose**
-
-Create a `docker-compose.yml` file:
+### **Docker Compose**
 
 ```yaml
 services:
   sonosync:
-    image: ghcr.io/sjefen6/sonosync:latest
+    image: sjefen6/sonosync:latest
     container_name: sonosync
     network_mode: "host"
-    environment:
-      - LOG_LEVEL=INFO
     restart: unless-stopped
-```
-
-Then run:
-```bash
-docker-compose up -d
 ```
 
 ## Development

@@ -6,8 +6,9 @@ on:
     tags: ['v*']
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  REGISTRY_GHCR: ghcr.io
+  # We'll use this for tagging. Note: IMAGE_NAME for Docker Hub will be handled in the step.
+  IMAGE_NAME_GHCR: ${{ github.repository }}
 
 jobs:
   build-and-push-image:
@@ -20,18 +21,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to the Container registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.REGISTRY_GHCR }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME_GHCR }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/sonosync
           tags: |
             # Tag with 'main' on push to main branch
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
