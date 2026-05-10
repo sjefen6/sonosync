@@ -4,25 +4,32 @@ A Node.js/TypeScript service designed to keep the volume levels of grouped Sonos
 
 ## Features
 
-- **Automatic Discovery:** Uses SSDP to find all Sonos speakers on your local network.
+- **Automatic Discovery:** Uses SSDP (multicast) to find speakers or direct IP connection.
 - **Group Awareness:** Dynamically detects logical groups. When a speaker's volume is changed, the service identifies its group and updates all other members.
-- **Loop Prevention:** Implements a caching mechanism to ignore volume change events triggered by the service itself, preventing infinite feedback loops.
+- **Loop Prevention:** Implements a caching mechanism to ignore volume change events triggered by the service itself.
 - **Real-time Updates:** Subscribes to UPnP events from speakers for near-instantaneous synchronization.
-- **Docker Ready:** Optimized for containerized deployment (requires host networking for discovery).
+- **Docker Ready:** Optimized for both Linux (host networking) and Windows/macOS (bridge networking).
 
 ## Prerequisites
 
-- **Docker & Docker Compose:** For running the application without local Node.js installation.
-- **Linux Host:** Recommended for deployment due to Docker networking limitations on Windows/macOS (host networking is required for SSDP discovery).
+- **Docker & Docker Compose**
+- **Linux Host (Recommended):** Best for "zero-config" deployment via host networking.
+- **Windows/macOS:** Fully supported via optional configuration overrides.
 
 ## Configuration
 
-The service works out-of-the-box with sensible defaults, but can be customized via environment variables:
+Customizable via environment variables:
 
 | Variable | Description | Default |
 | :--- | :--- | :--- |
 | `LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `ERROR`) | `INFO` |
 | `CACHE_TTL_MS` | Cooldown period for ignoring volume echos (ms) | `10000` |
+| `SONOS_SEED_IP` | (Optional) IP of one Sonos speaker to bypass SSDP discovery | - |
+| `SONOS_LISTENER_HOST`* | (Optional) Your host's IP for receiving UPnP events | - |
+| `SONOS_LISTENER_PORT`* | (Optional) Port for receiving UPnP events | `6329` |
+
+\* *Handled directly by the upstream `@svrooij/sonos` library.*
+
 
 ## Deployment
 
@@ -36,17 +43,9 @@ The service works out-of-the-box with sensible defaults, but can be customized v
 6. **Crucial:** Under **Network**, select **"host"**.
 7. Click **Done**.
 
-### **Docker CLI**
+### **Linux (Server/Desktop)**
 
-```bash
-docker run -d \
-  --name sonosync \
-  --network host \
-  --restart unless-stopped \
-  sjefen6/sonosync:latest
-```
-
-### **Docker Compose**
+On Linux, the service works out-of-the-box using host networking. Use this `docker-compose.yml`:
 
 ```yaml
 services:
@@ -54,6 +53,23 @@ services:
     image: sjefen6/sonosync:latest
     container_name: sonosync
     network_mode: "host"
+    restart: unless-stopped
+```
+
+### **Windows / macOS (Docker Desktop)**
+
+Discovery (multicast) typically fails on non-Linux Docker hosts. Use this configuration in your `docker-compose.yml`:
+
+```yaml
+services:
+  sonosync:
+    image: sjefen6/sonosync:latest
+    container_name: sonosync
+    ports:
+      - "6329:6329"
+    environment:
+      - SONOS_SEED_IP=192.168.1.50      # IP of any one Sonos speaker
+      - SONOS_LISTENER_HOST=192.168.1.10 # IP of your computer
     restart: unless-stopped
 ```
 
@@ -75,9 +91,10 @@ node dist/index.js
 
 ## How It Works
 
-1. **Discovery:** The `SonosManager` searches for a speaker and then fetches the entire network topology.
+1. **Discovery:** Uses SSDP (multicast) by default. If `SONOS_SEED_IP` is provided, it connects directly to that speaker and fetches the network topology via unicast.
 2. **Subscription:** For every discovered device, the service subscribes to `RenderingControl` events (Volume).
 3. **Sync Logic:** When a `Volume` event is received:
-   - It checks if the new volume matches a recently commanded "expected" volume (to skip its own updates).
-   - It finds the current members of the speaker's group.
-   - It iterates through members and calls `SetVolume` to match the source speaker.
+   - **Echo Cancellation:** It ignores events that are just "echos" of its own recent commands. This keeps things efficient and prevents redundant update loops.
+   - **Group Resolution:** It identifies which speakers are currently grouped together.
+   - **Parallel Broadcast:** It simultaneously updates the rest of the group to match.
+

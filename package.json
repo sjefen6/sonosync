@@ -4,20 +4,27 @@
   "description": "Automatic volume synchronization for Sonos speaker groups",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "build": "tsc"
   },
-  "keywords": ["sonos", "volume", "sync"],
+  "keywords": [
+    "sonos",
+    "volume",
+    "sync"
+  ],
   "author": "sjefen6",
   "license": "ISC",
-  "packageManager": "pnpm@10.25.0",
+  "packageManager": "pnpm@11.0.9+sha512.34ce82e6780233cf9cad8685029a8f81d2e06196c5a9bad98879f7424940c6817c4e4524fb7d38b8553ceed48b9758b8ebaf1abd3600c232c4c8cf7366086f38",
   "dependencies": {
     "@svrooij/sonos": "^2.5.0"
   },
   "devDependencies": {
     "@types/debug": "^4.1.13",
     "@types/node": "^25.6.2",
+    "@vitest/ui": "^4.1.5",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
+    "vitest": "^4.1.5",
     "yn": "^5.1.0"
   }
 }

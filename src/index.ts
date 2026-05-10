@@ -17,20 +17,21 @@ enum LogLevel {
 /**
  * Service to synchronize volume across grouped Sonos speakers.
  */
-class VolumeSync {
+export class VolumeSync {
   private manager: SonosManager;
-  /** Map of UUID to expected volume info with TTL support to prevent echo loops */
-  private expectedVolumes = new Map<string, ExpectedVolume>();
+  /** Map of UUID to the timestamp of the last command we sent to that speaker */
+  private lastCommandedAt = new Map<string, number>();
   /** Set of UUIDs already being listened to */
   private initializedDevices = new Set<string>();
   
-  private readonly cacheTtlMs: number;
+  private readonly lockDurationMs: number;
   private currentLogLevel: LogLevel = LogLevel.INFO;
 
-  constructor() {
-    this.manager = new SonosManager();
+  constructor(manager?: SonosManager) {
+    this.manager = manager || new SonosManager();
     this.setupLogLevel();
-    this.cacheTtlMs = parseInt(process.env.CACHE_TTL_MS || '10000', 10);
+    // Default to 3 seconds for the temporal lock if not specified
+    this.lockDurationMs = parseInt(process.env.CACHE_TTL_MS || '3000', 10);
   }
 
   private setupLogLevel() {
@@ -55,9 +56,10 @@ class VolumeSync {
   }
 
   /**
-   * Discovery with retry logic.
+   * Discovery with retry logic. Supports SONOS_SEED_IP override.
    */
   private async initializeDiscovery() {
+    const seedIp = process.env.SONOS_SEED_IP;
     let success = false;
     let attempts = 0;
     const maxAttempts = 5;
@@ -65,10 +67,15 @@ class VolumeSync {
     while (!success && attempts < maxAttempts) {
       try {
         attempts++;
-        this.log('info', `Discovery attempt ${attempts}/${maxAttempts}...`);
-        await this.manager.InitializeWithDiscovery();
+        if (seedIp) {
+          this.log('info', `Initializing from seed IP: ${seedIp} (Attempt ${attempts}/${maxAttempts})`);
+          await this.manager.InitializeFromDevice(seedIp);
+        } else {
+          this.log('info', `Starting SSDP discovery... (Attempt ${attempts}/${maxAttempts})`);
+          await this.manager.InitializeWithDiscovery();
+        }
         
-        this.log('info', `Discovery finished. Found ${this.manager.Devices.length} devices.`);
+        this.log('info', `Discovery finished. Monitoring ${this.manager.Devices.length} devices.`);
         
         for (const device of this.manager.Devices) {
           this.setupDeviceListeners(device);
@@ -84,7 +91,7 @@ class VolumeSync {
     }
 
     if (!success) {
-      this.log('error', 'Could not discover any Sonos devices after multiple attempts. Exiting.');
+      this.log('error', 'Could not discover any Sonos devices. Exiting.');
       process.exit(1);
     }
   }
@@ -121,21 +128,15 @@ class VolumeSync {
     
     this.log('debug', `Handler triggered for ${sourceDevice.Name} volume: ${newVolume}`);
 
-    const expected = this.expectedVolumes.get(uuid);
-    if (expected) {
-      const isWithinTTL = (now - expected.timestamp) < this.cacheTtlMs;
-      const volumeMatches = Number(expected.volume) === Number(newVolume);
-      
-      if (isWithinTTL && volumeMatches) {
-        this.log('info', `[ECHO] Ignored sync echo from ${sourceDevice.Name} (${newVolume}%)`);
-        this.expectedVolumes.delete(uuid);
+    // 1. Echo Cancellation (Temporal Lock)
+    const lastCommanded = this.lastCommandedAt.get(uuid);
+    if (lastCommanded && (now - lastCommanded) < this.lockDurationMs) {
+        this.log('info', `[ECHO] Ignored temporal echo from ${sourceDevice.Name} (${newVolume}%)`);
         return;
-      }
-      
-      if (!isWithinTTL) {
-        this.expectedVolumes.delete(uuid);
-      }
     }
+
+    // If no active lock, treat as a manual change
+    this.log('info', `[EVENT] ${sourceDevice.Name} manual change -> ${newVolume}%`);
 
     const groupName = sourceDevice.GroupName;
     if (!groupName) return;
@@ -146,17 +147,18 @@ class VolumeSync {
     
     if (groupMembers.length === 0) return;
 
-    this.log('info', `[EVENT] ${sourceDevice.Name} manual change -> ${newVolume}%`);
     this.log('info', `[SYNC] Broadcasting ${newVolume}% to group "${groupName}" (${groupMembers.length} members)`);
 
+    // 2. Parallel Broadcast
     const syncTasks = groupMembers.map(async (member) => {
       try {
-        this.expectedVolumes.set(member.Uuid, { volume: newVolume, timestamp: Date.now() });
+        // Set lock timestamp BEFORE calling to ensure we capture fast echos
+        this.lastCommandedAt.set(member.Uuid, Date.now());
+        
         await member.SetVolume(newVolume);
         this.log('debug', `Successfully updated ${member.Name}`);
       } catch (error) {
         this.log('error', `Failed to sync ${member.Name}`, error);
-        this.expectedVolumes.delete(member.Uuid);
       }
     });
 
@@ -198,8 +200,11 @@ class VolumeSync {
   }
 }
 
-const sync = new VolumeSync();
-sync.start().catch(err => {
-    console.error('FATAL STARTUP ERROR:', err);
-    process.exit(1);
-});
+// Only start if run directly
+if (require.main === module) {
+  const sync = new VolumeSync();
+  sync.start().catch(err => {
+      console.error('FATAL STARTUP ERROR:', err);
+      process.exit(1);
+  });
+}

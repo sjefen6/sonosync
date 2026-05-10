@@ -2,10 +2,15 @@ services:
   sonosync:
     build: .
     container_name: sonosync
-    network_mode: "host"
+    ports:
+      - "6329:6329"
+    # network_mode: "host"
     environment:
-      - LOG_LEVEL=INFO
+      # - LOG_LEVEL=DEBUG  # Shows our app's internal comparisons and handlers
+      # - DEBUG=sonos:*
       - CACHE_TTL_MS=10000
+      - SONOS_SEED_IP=192.168.1.124
+      - SONOS_LISTENER_HOST=192.168.1.127
     restart: unless-stopped
     # Healthcheck to ensure the process is still alive
     healthcheck:
