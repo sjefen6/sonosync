@@ -5,9 +5,9 @@ services:
     network_mode: "host"
     volumes:
       - .:/app
-      - /app/node_modules # Anonymous volume for node_modules
+      - /app/node_modules
     environment:
       - NODE_ENV=development
-      - DEBUG=sonos:*
-      - CI=true # Suppress TTY prompts
+      - LOG_LEVEL=INFO # Our app logs (INFO, DEBUG, ERROR)
+      - DEBUG= # Disable library logs by default for cleaner output
     restart: unless-stopped
