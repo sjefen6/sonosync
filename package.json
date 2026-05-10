@@ -1,13 +1,13 @@
 {
   "name": "sonosync",
   "version": "1.0.0",
-  "description": "",
+  "description": "Automatic volume synchronization for Sonos speaker groups",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["sonos", "volume", "sync"],
+  "author": "sjefen6",
   "license": "ISC",
   "packageManager": "pnpm@10.25.0",
   "dependencies": {
