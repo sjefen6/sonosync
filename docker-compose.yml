@@ -3,8 +3,14 @@ services:
     build: .
     container_name: sonosync
     network_mode: "host"
-    # No more volume mounts needed for runtime - the image is self-contained!
     environment:
       - LOG_LEVEL=INFO
-      - DEBUG=
+      - CACHE_TTL_MS=10000
     restart: unless-stopped
+    # Healthcheck to ensure the process is still alive
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "node"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
