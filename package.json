@@ -20,11 +20,11 @@
   },
   "devDependencies": {
     "@types/debug": "^4.1.13",
-    "@types/node": "^25.6.2",
-    "@vitest/ui": "^4.1.5",
+    "@types/node": "^25.8.0",
+    "@vitest/ui": "^4.1.6",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5",
+    "vitest": "^4.1.6",
     "yn": "^5.1.0"
   }
 }
