@@ -1,5 +1,5 @@
 # STAGE 1: Build
-FROM node:24.15.0-bookworm-slim AS builder
+FROM node:26.7.0-bookworm-slim AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN pnpm exec tsc
 
 
 # STAGE 2: Runtime
-FROM node:24.15.0-bookworm-slim AS runner
+FROM node:26.7.0-bookworm-slim AS runner
 
 # Install tini for signal handling
 RUN apt-get update && apt-get install -y tini && rm -rf /var/lib/apt/lists/*
